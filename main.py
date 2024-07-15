@@ -10,7 +10,7 @@ client = discord.Client(intents=intents)
 
 
 TOKEN = ''
-CHANNEL_ID = None
+CHANNEL_ID =
 TARGET = ''
 URL = ''
 URL2 = ''
@@ -117,18 +117,23 @@ def crawl_pages(start, end, target, URL, ref_time, old_number):
                         old_number = new_number
 
                     except Exception as e:
-                        print(f"Error in processing: {e}")
+                        pass
+                        #print(f"Error in processing: {e}")
 
 
 
-        except:
+
+
+        except Exception as e:
             pass
-    return re_list
+            #print(f"Error in processing: {e}")
+    return re_list ,ref_time,old_number
 
 
 @tasks.loop(seconds=60)
 async def check_new_posts():
-    results = crawl_pages(1, 1, TARGET, URL, ref_time, old_number)
+    global ref_time, old_number
+    results,ref_time,old_number = crawl_pages(1, 1, TARGET, URL, ref_time, old_number)
     if results:
         channel = client.get_channel(CHANNEL_ID)
         for date, title, url in results:
@@ -148,7 +153,8 @@ async def check_new_posts():
 
 @tasks.loop(seconds=60)
 async def check_new_posts2():
-    results = crawl_pages(1, 1, TARGET, URL2, ref_time2, old_number2)
+    global ref_time2, old_number2
+    results ,ref_time2, old_number2 = crawl_pages(1, 1, TARGET, URL2, ref_time2, old_number2)
     if results:
         channel = client.get_channel(CHANNEL_ID)
         for date, title, url in results:
@@ -164,7 +170,7 @@ async def check_new_posts2():
         sent_urls2.clear()
         sent_urls2.update(set(result[2] for result in results))
 
-    check_new_posts.change_interval(seconds=ref_time)
+    check_new_posts2.change_interval(seconds=ref_time2)
 
 
 @client.event
