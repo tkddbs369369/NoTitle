@@ -10,20 +10,24 @@ client = discord.Client(intents=intents)
 
 
 TOKEN = ''
-CHANNEL_ID =
+CHANNEL_ID = None
 TARGET = ''
 URL = ''
-
-
+URL2 = ''
 
 
 old_number = 99999999
 ref_time = 60
 
+old_number2 = 99999999
+ref_time2 = 60
 
 sent_urls = set()
+sent_urls2 = set()
 
-def crawl_pages(start, end, target, URL):
+
+
+def crawl_pages(start, end, target, URL, ref_time, old_number):
     re_list = []
     for p in range(start, end + 1):
 
@@ -76,17 +80,22 @@ def crawl_pages(start, end, target, URL):
                     re_list.append((date, title, url))
                     print((date, title, url))
                 if i == 10:
-                    global ref_time
-                    global old_number
                     try:
                         clarify_element = soup.select_one(
                             f'#container > section.left_content > article:nth-child(3) > div.gall_listwrap.list > table > tbody > tr:nth-child({i}) > td.gall_tit.ub-word > a')
 
                         new_url = clarify_element.get('href')
 
+                        patterns = [
+                            r'/mini/board/view/\?id=supbangsong&no=(\d+)&page=1',
+                            r'/mini/board/view/\?id=soopvirtualstreamer&no=(\d+)&page=1'
+                        ]
 
-                        pattern = r'/mini/board/view/\?id=supbangsong&no=(\d+)&page=1'  # 패턴 수정
-                        match = re.search(pattern, new_url)
+                        match = None
+                        for pattern in patterns:
+                            match = re.search(pattern, new_url)
+                            if match:
+                                break
 
                         new_number = int(match.group(1))
 
@@ -116,17 +125,16 @@ def crawl_pages(start, end, target, URL):
             pass
     return re_list
 
+
 @tasks.loop(seconds=60)
 async def check_new_posts():
-
-
-
-    results = crawl_pages(1, 1, TARGET, URL)
+    results = crawl_pages(1, 1, TARGET, URL, ref_time, old_number)
     if results:
         channel = client.get_channel(CHANNEL_ID)
         for date, title, url in results:
             if url not in sent_urls:
                 embed = discord.Embed(title=title, url=url, color=discord.Color.blue())
+                embed.add_field(name="숲방송", value="\u200b", inline=False)
                 embed.add_field(name="Date", value=date, inline=False)
                 await channel.send(embed=embed)
                 sent_urls.add(url)
@@ -138,9 +146,33 @@ async def check_new_posts():
 
     check_new_posts.change_interval(seconds=ref_time)
 
+@tasks.loop(seconds=60)
+async def check_new_posts2():
+    results = crawl_pages(1, 1, TARGET, URL2, ref_time2, old_number2)
+    if results:
+        channel = client.get_channel(CHANNEL_ID)
+        for date, title, url in results:
+            if url not in sent_urls2:
+                embed = discord.Embed(title=title, url=url, color=discord.Color.blue())
+                embed.add_field(name="숲 버츄얼", value="\u200b", inline=False)
+                embed.add_field(name="Date", value=date, inline=False)
+                await channel.send(embed=embed)
+                sent_urls2.add(url)
+
+
+    if len(sent_urls2) > 10:
+        sent_urls2.clear()
+        sent_urls2.update(set(result[2] for result in results))
+
+    check_new_posts.change_interval(seconds=ref_time)
+
+
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
     check_new_posts.start()
-
+    check_new_posts2.start()
 client.run(TOKEN)
+
+
+
